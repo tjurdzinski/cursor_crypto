@@ -1,0 +1,68 @@
+diff --git a/node_modules/bybit-mcp-server/dist/tools.js b/node_modules/bybit-mcp-server/dist/tools.js
+index f65e94f..10d96f0 100644
+--- a/node_modules/bybit-mcp-server/dist/tools.js
++++ b/node_modules/bybit-mcp-server/dist/tools.js
+@@ -101,8 +101,7 @@ exports.tools = [
+             properties: {
+                 category: {
+                     type: 'string',
+-                    enum: ['spot', 'linear', 'inverse', 'option'],
+-                    description: 'Product type'
++                    description: 'Product type: spot, linear, inverse, or option'
+                 },
+                 symbol: {
+                     type: 'string',
+diff --git a/node_modules/bybit-mcp-server/dist/types.js b/node_modules/bybit-mcp-server/dist/types.js
+index a2eb866..0645063 100644
+--- a/node_modules/bybit-mcp-server/dist/types.js
++++ b/node_modules/bybit-mcp-server/dist/types.js
+@@ -18,39 +18,39 @@ exports.OrderBookSchema = zod_1.z.object({
+ });
+ exports.KlinesSchema = zod_1.z.object({
+     symbol: zod_1.z.string().describe('Trading symbol (e.g., BTCUSDT)'),
+-    interval: zod_1.z.enum(['1', '3', '5', '15', '30', '60', '120', '240', '360', '720', 'D', 'M', 'W']).describe('Kline interval'),
++    interval: zod_1.z.string().describe('Kline interval: 1,3,5,15,30,60,120,240,360,720,D,M,W'),
+     limit: zod_1.z.number().min(1).max(1000).optional().describe('Number of klines to return (default: 200)')
+ });
+ exports.TickerSchema = zod_1.z.object({
+     symbol: zod_1.z.string().optional().describe('Trading symbol (if not provided, returns all symbols)')
+ });
+ exports.PlaceOrderSchema = zod_1.z.object({
+-    category: zod_1.z.enum(['spot', 'linear', 'inverse', 'option']).describe('Product type'),
++    category: zod_1.z.string().describe('Product type: spot | linear | inverse | option'),
+     symbol: zod_1.z.string().describe('Trading symbol'),
+-    side: zod_1.z.enum(['Buy', 'Sell']).describe('Order side'),
+-    orderType: zod_1.z.enum(['Market', 'Limit']).describe('Order type'),
++    side: zod_1.z.string().describe('Order side: Buy or Sell'),
++    orderType: zod_1.z.string().describe('Order type: Market or Limit'),
+     qty: zod_1.z.string().describe('Order quantity'),
+     price: zod_1.z.string().optional().describe('Order price (required for limit orders)'),
+-    timeInForce: zod_1.z.enum(['GTC', 'IOC', 'FOK']).optional().describe('Time in force (default: GTC)')
++    timeInForce: zod_1.z.string().optional().describe('Time in force: GTC, IOC, FOK (default GTC)')
+ });
+ exports.CancelOrderSchema = zod_1.z.object({
+-    category: zod_1.z.enum(['spot', 'linear', 'inverse', 'option']).describe('Product type'),
++    category: zod_1.z.string().describe('Product type: spot | linear | inverse | option'),
+     symbol: zod_1.z.string().describe('Trading symbol'),
+     orderId: zod_1.z.string().optional().describe('Order ID'),
+     orderLinkId: zod_1.z.string().optional().describe('Order link ID')
+ });
+ exports.OrderHistorySchema = zod_1.z.object({
+-    category: zod_1.z.enum(['spot', 'linear', 'inverse', 'option']).describe('Product type'),
++    category: zod_1.z.string().describe('Product type: spot | linear | inverse | option'),
+     symbol: zod_1.z.string().optional().describe('Trading symbol'),
+     limit: zod_1.z.number().min(1).max(50).optional().describe('Number of records to return (default: 20)')
+ });
+ exports.OpenOrdersSchema = zod_1.z.object({
+-    category: zod_1.z.enum(['spot', 'linear', 'inverse', 'option']).describe('Product type'),
++    category: zod_1.z.string().describe('Product type: spot | linear | inverse | option'),
+     symbol: zod_1.z.string().optional().describe('Trading symbol'),
+     limit: zod_1.z.number().min(1).max(50).optional().describe('Number of records to return (default: 20)')
+ });
+ exports.WalletBalanceSchema = zod_1.z.object({
+-    accountType: zod_1.z.enum(['UNIFIED', 'CONTRACT', 'SPOT', 'INVESTMENT', 'OPTION', 'FUND']).describe('Account type'),
++    accountType: zod_1.z.string().describe('Account type: UNIFIED, CONTRACT, SPOT, INVESTMENT, OPTION, FUND'),
+     coin: zod_1.z.string().optional().describe('Coin name (if not provided, returns all coins)')
+ });
+ //# sourceMappingURL=types.js.map
+\ No newline at end of file

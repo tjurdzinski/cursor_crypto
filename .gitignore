@@ -1,0 +1,7 @@
+node_modules/
+.cursor/mcp.json
+.env
+.env.*
+*.pem
+logs/
+.DS_Store

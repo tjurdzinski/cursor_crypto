@@ -1,0 +1,16 @@
+{
+  "name": "cursor_tv",
+  "private": true,
+  "description": "Local MCP deps (pinned)",
+  "scripts": {
+    "postinstall": "patch-package",
+    "bybit": "node scripts/bybit-cli.mjs"
+  },
+  "dependencies": {
+    "bybit-api": "^4.6.1",
+    "bybit-mcp-server": "1.0.1"
+  },
+  "devDependencies": {
+    "patch-package": "^8.0.1"
+  }
+}

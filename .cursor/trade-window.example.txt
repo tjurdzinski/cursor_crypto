@@ -1,0 +1,5 @@
+# Opcjonalne okno handlu UTC (skopiuj do trade-window.txt i usuń #).
+# Format jednej linii: HH:MM-HH:MM (np. 08:00-22:00).
+# Gdy plik trade-window.txt lub BYBIT_TRADE_WINDOW_UTC jest ustawiony,
+# bybit-cli blokuje --execute poza tym oknem (chyba że --bypass-hours).
+# 08:00-22:00

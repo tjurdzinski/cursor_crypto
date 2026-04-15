@@ -1,0 +1,9 @@
+Wykonaj jeden pełny cykl skillu „btc-floop-bybit-cycle” (.cursor/skills/btc-floop-bybit-cycle/SKILL.md):
+- Przetworz oba symbole po kolei: BYBIT:BTCUSDT.P -> BTCUSDT oraz BYBIT:DOGEUSDT.P -> DOGEUSDT.
+- Dla kazdego symbolu ustaw wykres na 5m, odczytaj FLOOP (tabele, labele, study values, OHLCV) i ocen setup A/A+/B.
+- Tylko A/A+ rozważ pod nowe Limit na Bybit linear dla aktualnego symbolu.
+- Przed kazdym submit zrob: calc-size -> set-leverage -> submit (bybit-cli); nie zgaduj qty recznie.
+- Sprawdz duplikat 15 min per symbol i policz rozmiar jako 20% equity @ 100x dla kazdego symbolu osobno.
+- Jesli pozycja juz istnieje dla symbolu, zarzadzaj SL/TP/breakeven/trail zamiast dublowac wejscie.
+- Stan Bybit: jesli mcp_bybit_* z parametrami zwraca blad JSON, uzyj Shell: `node scripts/bybit-cli.mjs` (wallet-balance, open-orders, order-history, positions, submit/cancel z --execute tylko gdy zgodne ze skillem).
+- Nie wysylaj powiadomien zewnetrznych. Podsumuj decyzje i ewentualne zlecenia (MCP lub CLI) per symbol.

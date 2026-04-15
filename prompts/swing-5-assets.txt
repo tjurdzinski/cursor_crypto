@@ -1,0 +1,9 @@
+Otworz tv, zobacz wykres i zrób analize. Mozesz dodawac dowolne wskazniki, zmieniac timeframe.
+
+Celem jest swing trading na BTC, ETH, SOL, DOGE, LINK  na krotkich timeframe. Wydaj rekomendacje w postaci tabeli i krótkich decyzji: HOLD, OPEN LONG, OPEN SHORT, HOLD LONG, HOLD SHORT
+
+Hold long i hold short jeśli mamy jakieś pozycje. Będzie je widać na wykresie.
+
+Jesli nie mamy pozycji a rekomendacja jest LONG lub SHORT to otwieramy nową pozycję za 10% quity z maksymalna dzwignia dla pozycji.
+
+Dla istniejacych pozycji zrób analize TP/SL - zmień jeśli jest potrzeba.
