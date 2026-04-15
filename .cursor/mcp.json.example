@@ -10,12 +10,7 @@
       "command": "node",
       "args": [
         "./node_modules/bybit-mcp-server/dist/index.js"
-      ],
-      "env": {
-        "BYBIT_API_KEY": "REPLACE_ME",
-        "BYBIT_API_SECRET": "REPLACE_ME",
-        "BYBIT_ENVIRONMENT": "mainnet"
-      }
+      ]
     }
   }
 }
