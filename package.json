@@ -4,11 +4,17 @@
   "description": "Local MCP deps (pinned)",
   "scripts": {
     "postinstall": "patch-package",
-    "bybit": "node scripts/bybit-cli.mjs"
+    "bybit": "node scripts/bybit-cli.mjs",
+    "dashboard": "node dashboard/server.mjs",
+    "dashboard:ingest": "node dashboard/ingest-run.mjs",
+    "dashboard:retention": "node dashboard/retention.mjs",
+    "dashboard:ui": "npm --prefix dashboard/ui run build"
   },
   "dependencies": {
+    "better-sqlite3": "^11.8.1",
     "bybit-api": "^4.6.1",
-    "bybit-mcp-server": "1.0.1"
+    "bybit-mcp-server": "1.0.1",
+    "express": "^4.21.2"
   },
   "devDependencies": {
     "patch-package": "^8.0.1"

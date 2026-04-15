@@ -4,4 +4,7 @@ node_modules/
 .env.*
 *.pem
 logs/
+data/
+dashboard/ui-dist/
+dashboard/ui/node_modules/
 .DS_Store

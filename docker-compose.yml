@@ -1,0 +1,19 @@
+# HTTP pod MagicDNS (Tailscale). Utwórz plik `.env` obok tego pliku z BYBIT_API_KEY i BYBIT_API_SECRET
+# (docker compose wczytuje `.env` do podstawień). Wolumeny: wspólna baza i logi z cronem na hoście.
+services:
+  dashboard:
+    build: .
+    ports:
+      - "${DASHBOARD_PUBLISH:-8080}:8080"
+    environment:
+      PORT: "8080"
+      HOST: "0.0.0.0"
+      DASHBOARD_DB_PATH: /data/dashboard.db
+      DASHBOARD_RETENTION_DAYS: "7"
+      NODE_ENV: production
+      BYBIT_API_KEY: ${BYBIT_API_KEY:?Brak BYBIT_API_KEY — dodaj do pliku .env obok compose}
+      BYBIT_API_SECRET: ${BYBIT_API_SECRET:?Brak BYBIT_API_SECRET — dodaj do pliku .env obok compose}
+      BYBIT_ENVIRONMENT: ${BYBIT_ENVIRONMENT:-mainnet}
+    volumes:
+      - ./data:/data
+      - ./logs:/app/logs
