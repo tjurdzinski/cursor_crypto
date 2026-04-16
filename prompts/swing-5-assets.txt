@@ -1,5 +1,7 @@
 Jesteś w trybie CRON (headless). Workspace = główny katalog repozytorium cursor_crypto (zmienna środowiskowa CURSOR_CRYPTO_ROOT jeśli ustawiona).
 
+Na początku tej samej wiadomości (przed tymi wytycznymi) cron dokleja blok „Ostatnie zamknięcia PnL” z Bybit: ostatnie ~30 min, tylko symbole swing; dla każdego zamknięcia: czas (UTC), symbol, closedPnl, orderType (Market/Limit wg API Bybit), pozycja LONG lub SHORT (wyprowadzone z side zamykającego zlecenia: Sell→LONG, Buy→SHORT na linear). Traktuj to jako kontekst przy re-entry i przy TP/SL.
+
 Celem jest swing trading na BTC, SOL, LINK, TAO, ZEC na krótkich timeframe. Wydaj rekomendacje w postaci tabeli i krótkich decyzji: HOLD, OPEN LONG, OPEN SHORT, HOLD LONG, HOLD SHORT.
 
 Hold long i hold short jeśli mamy jakieś pozycje. Będzie je widać na wykresie.
@@ -8,8 +10,28 @@ Jeśli nie mamy pozycji a rekomendacja jest LONG lub SHORT to otwieramy nową po
 
 Dla istniejących pozycji zrób analizę TP/SL — zmień jeśli jest potrzeba.
 
+## Faza sideways / konsolidacja — filtry anty-chop (obowiązkowe przed OPEN_*)
+Cel: unikać strat z „tnięcia” w zakresie; **nowe wejścia tylko przy jasnym reżimie i miejscu w strukturze**.
+
+1) **Reżim na wyższym TF (HTF)**  
+   Zanim zarekomendujesz `OPEN_LONG` / `OPEN_SHORT`, na **co najmniej jednym wyższym timeframe** niż główna decyzja (np. przy bazie 15m/30m sprawdź **1h**, a przy bazie 30m/1h sprawdź **4h**) określ jednoznacznie:  
+   - **TREND** — spójna struktura (HH/HL dla long bias, LH/LL dla short bias) i cena nie „klei się” w poziomym pasie tygodniami bez impulsów, **albo**  
+   - **RANGE / SIDEWAYS** — powtarzające się góry/dół w podobnych strefach, brak kontynuacji po impulsach, cena większość czasu **wewnątrz skrzynki** między wyraźnym HTF high/low.
+
+2) **W RANGE / SIDEWAYS — domyślnie brak nowych pozycji**  
+   Jeśli reżim to **RANGE / SIDEWAYS**: ustaw `HOLD` lub `SKIP` (nowe `OPEN_*` **zabronione**), **chyba że** spełniony jest **jeden** z poniższych planów (opisz go jednym zdaniem w tabeli i w `summary` w JSON):  
+   - **Krawędź skrzynki (mean reversion tylko przy odrzuceniu)**: wejście **wyłącznie** przy reakcji na **HTF** opór/wsparcie skrzynki (odrzucenie / pin / jasny failure swing), invalidacja (SL) **po drugiej stronie** lokalnej struktury, nie w środku pasma.  
+   - **Kontynuacja po wybiciu**: **impulsowe** przebicie granicy zakresu na HTF, potem **retest** przebitego poziomu z potwierdzeniem strukturą lub zamknięciem świecy; SL za strukturą retestu / fałszywym przebiciem.  
+   **Zakaz:** wejść „w środku skrzynki” wyłącznie na podstawie mikro-ruchu LTF bez zgodnego biasu HTF i bez powyższego planu.
+
+3) **PnL z cron (nagłówek wiadomości)**  
+   Jeśli dla symbolu widać **serię zamknięć na minus** w ostatnich ~30 min i wykres nadal wygląda na **chop / range**: w tej iteracji **`SKIP`** lub `HOLD` dla **nowych** `OPEN_*` na tym symbolu (nie „odrabiaj” kolejnym wejściem w tym samym reżimie).
+
+4) **Istniejąca pozycja wchodząca w sideways**  
+   Priorytet: **ochrona** — rozważ zacieśnienie SL, BE po strukturze, partial TP przy przeciwnej ścianie skrzynki; **nie zwiększaj** exposure i nie eskaluj w środku zakresu bez nowego HTF breakout/retest.
+
 ## TradingView (tylko odczyt / kontekst)
-Otwórz TV, zobacz wykres, zrób analizę. Możesz dodawać wskaźniki, zmieniać timeframe (krótkie TF pod swing: np. 15m / 30m / 1h).
+Otwórz TV, zobacz wykres, zrób analizę. Możesz dodawać wskaźniki, zmieniać timeframe (krótkie TF pod swing: np. 15m / 30m / 1h). **Zawsze** uwzględnij co najmniej jeden **wyższy** TF niż główny do oceny reżimu (patrz sekcja sideways powyżej).
 
 Symbole na TV (perp Bybit): BYBIT:BTCUSDT.P, BYBIT:SOLUSDT.P, BYBIT:LINKUSDT.P, BYBIT:TAOUSDT.P, BYBIT:ZECUSDT.P.
 Mapowanie na API Bybit (category=linear): BTCUSDT, SOLUSDT, LINKUSDT, TAOUSDT, ZECUSDT.
@@ -29,7 +51,7 @@ Zakaz odsyłania użytkownika do „ręcznego ustawienia na Bybit”, jeśli ope
 ### Kolejność pracy
 1) Dla każdego z 5 symboli (BTCUSDT, SOLUSDT, LINKUSDT, TAOUSDT, ZECUSDT): `node scripts/bybit-cli.mjs positions linear BTCUSDT` itd. Zapisz stronę (Buy/Sell), size, avgPrice, TP/SL, leverage.
 2) `node scripts/bybit-cli.mjs wallet-balance UNIFIED USDT` — equity / saldo pod sizing.
-3) Analiza TV + tabela decyzji: HOLD, OPEN LONG, OPEN SHORT, HOLD LONG, HOLD SHORT (HOLD LONG/SHORT gdy jest otwarta pozycja w tym kierunku).
+3) Analiza TV (w tym HTF i reżim z sekcji „Faza sideways”) + tabela decyzji: HOLD, OPEN LONG, OPEN SHORT, HOLD LONG, HOLD SHORT (HOLD LONG/SHORT gdy jest otwarta pozycja w tym kierunku); **bez** nowych `OPEN_*` w RANGE poza dwoma dozwolonymi planami.
 4) Wykonanie decyzji **tylko przez CLI** (patrz niżej).
 
 ### Nowa pozycja (brak istniejącej lub zmiana kierunku wymaga najpierw zamknięcia — nie nakładaj bez planu)
@@ -56,7 +78,7 @@ Na **samym końcu** całego outputu (ostatnia **niepusta** linia) wypisz dokład
 
 Minimalny kształt (pola możesz rozszerzać; tablica `decisions` musi odzwierciedlać instrumenty, które realnie analizowałeś lub handlowałeś — nie musi to być stała piątka):
 
-Obiekt JSON musi zawierać m.in.: `schema_version` (liczba 1), `summary` (jedno zdanie PL), `decisions` (tablica obiektów z polami `symbol`, `action`, `summary`, opcjonalnie `cli_executed` jako tablica stringów), opcjonalnie `cli_log` (tablica `{cmd, result}`), `errors` (tablica stringów).
+Obiekt JSON musi zawierać m.in.: `schema_version` (liczba 1), `summary` (jedno zdanie PL), `decisions` (tablica obiektów z polami `symbol`, `action`, `summary`, opcjonalnie `cli_executed` jako tablica stringów), opcjonalnie `cli_log` (tablica `{cmd, result}`), `errors` (tablica stringów). Dla każdego elementu `decisions` **zalecane** (nie wymagane parsowaniem): pole `market_regime` z jedną wartością `trend` | `range` | `unclear` — zgodnie z oceną HTF z sekcji sideways; przy `range` i akcji `OPEN_*` musi być w `summary` wskazany plan (krawędź skrzynki albo breakout+retest).
 
 `action` musi być jednym z: HOLD, OPEN_LONG, OPEN_SHORT, HOLD_LONG, HOLD_SHORT, SKIP (SKIP = instrument pominięty lub brak danych).
 
