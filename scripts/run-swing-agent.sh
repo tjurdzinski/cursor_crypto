@@ -43,7 +43,20 @@ if ! flock -n 9; then
   exit 0
 fi
 
-PROMPT="$(cat "$REPO/prompts/swing-5-assets.txt")"
+# Kontekst zamknięć przed wytycznymi swing (opcja B: wrapper skleja tekst; agent nie woła API).
+RECENT_BLOCK="$(
+  node "$REPO/scripts/recent-swing-activity.mjs" 2>&1 ||
+    printf '%s\n' "(recent-swing-activity: nie udało się uruchomić skryptu)"
+)"
+PROMPT="$(cat <<EOF
+## Ostatnie zamknięcia PnL (Bybit linear, ostatnie ~30 min; m.in. TAOUSDT)
+${RECENT_BLOCK}
+
+---
+
+$(cat "$REPO/prompts/tao-intraday-agent.txt")
+EOF
+)"
 AGENT="${AGENT:-$HOME/.local/bin/agent}"
 
 RUN_ID="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen 2>/dev/null || echo "run-$(date -u +%s)")"
@@ -62,6 +75,9 @@ set +o pipefail
 _agent_ec=${PIPESTATUS[0]}
 set -euo pipefail
 
-node "$REPO/dashboard/ingest-run.mjs" "$RUN_ID" "$RUN_LOG" "$_agent_ec" || true
+if ! node "$REPO/dashboard/ingest-run.mjs" "$RUN_ID" "$RUN_LOG" "$_agent_ec"; then
+  _ing=$?
+  echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') ingest-run FAILED exit=${_ing} run=${RUN_ID} log=${RUN_LOG} (wpis nie trafi do dashboardu)" >>"$LOG"
+fi
 
 exit "$_agent_ec"

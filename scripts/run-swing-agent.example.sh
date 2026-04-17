@@ -11,7 +11,7 @@ export BYBIT_ENVIRONMENT="${BYBIT_ENVIRONMENT:-mainnet}"
 LOG="$REPO/logs/swing-cron-$(date -u +%Y%m%d).log"
 mkdir -p "$REPO/logs"
 
-PROMPT="$(cat "$REPO/prompts/swing-5-assets.txt")"
+PROMPT="$(cat "$REPO/prompts/tao-intraday-agent.txt")"
 AGENT="${AGENT:-$HOME/.local/bin/agent}"
 
 "$AGENT" --print --output-format text --workspace "$REPO" --trust --yolo --approve-mcps \

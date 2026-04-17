@@ -26,7 +26,7 @@ npm ci
 
 ## Cron + agent (headless)
 
-Prompt: `prompts/swing-5-assets.txt`. Przykładowy wrapper: `scripts/run-swing-agent.example.sh` (skopiuj poza repo lub do `~/bin`, nadaj `chmod +x`).
+Prompt crona: `prompts/tao-intraday-agent.txt` (agent TAO intraday; repo: `scripts/run-swing-agent.sh`). Starszy prompt wielo-aktywowy: `prompts/swing-5-assets.txt`. Przykładowy wrapper: `scripts/run-swing-agent.example.sh` (skopiuj poza repo lub do `~/bin`, nadaj `chmod +x`).
 
 W cronie podaj pełną ścieżkę do `agent` i eksportuj ENV Bybit przed wywołaniem (cron ma ubogi `PATH`).
 
