@@ -33,8 +33,8 @@ fee_maker:         0.0002              # 0.02 %
 fee_taker:         0.00055             # 0.055 %
 funding_interval:  8h                  # confirm via tickers endpoint; may be 4h
 max_concurrent:    1                   # one trade at a time, always
-price_tick:        0.01                # verify via instruments-info
-qty_step:          0.1                 # verify via instruments-info
+price_tick:        (verify via instruments-info; do not assume)
+qty_step:          (verify via instruments-info; often 0.001 on TAO — never hard-code)
 slippage_buffer:   0.05 %              # assumed on market exits
 Round-trip cost (locked in)
 At 25× leverage the round-trip commission = (0.02% + 0.055%) × 25 = 1.875% of the margin posted. In price terms that is 0.075% of the entry price — the minimum move required just to break even.
@@ -51,14 +51,14 @@ p90 15m true range: 1.16 %; max single-bar range observed: 3.5 %.
 Median hourly absolute move: 0.55 %; ~54 % of hours produce ≥0.5 % close-to-close moves.
 24h realized range commonly 5–6 %.
 High-activity windows (UTC): 13–17 (US session), 20–22 (post-close), 00–01 (Asia open). Window 16:00 UTC = peak volume.
-Dead windows (UTC): 03–07. Treat as "no-trade" unless an explicit range-breakout setup fires.
+Low-liquidity window (UTC): hours **3–6** (03:00–06:59) — treat as **no-trade** for **A/B/D**; **07:00+** is not this dead band. Setup **C** uses **02:00–07:00** range + **07:00–09:00** breakout trigger (§6).
 
 
 4. Pre-trade checklist — ALL must be "yes"
 Before every single entry, the agent verifies and writes to the journal:
 
 Equity & margin — free margin ≥ 11 % of equity (10 % for trade + 1 % buffer).
-Session gate — current UTC hour is NOT 03–07 (unless setup = Asian Range Break).
+Session gate — **precise UTC (integer hour, clock on exchange server):** dead window for setups **A / B / D** = hours **3, 4, 5, 6** only (03:00–06:59). **Hour 7 (07:00–07:59) is NOT dead** for A/B/D. Setup **C** (Asian Range Break) uses its own window (§6): range **02:00–07:00**, trigger window **07:00–09:00**; outside that, C is off.
 Funding window — ≥ 15 min until next funding settlement (do not straddle settlement unless holding-through is explicit in plan).
 Funding bias filter — if abs(funding_rate) > 0.05 % per 8h AND position direction = same side as crowd, downgrade the setup or skip.
 Volatility gate — 14-bar ATR% on 15m between 0.35 % and 1.50 %. Below = dead tape. Above = news chaos.
@@ -74,12 +74,19 @@ If any item fails → skip and log reason. Do not modify the setup to force a tr
 Query the chart and compute:
 
 trend4h: sign of (EMA20 − EMA50) on 4h; |slope| of EMA50 over 20 bars.
-trend1h: sign of (EMA20 − EMA50) on 1h; is price above/below 1h VWAP.
+trend1h: sign of (EMA20 − EMA50) on 1h; is price **above / below 1h VWAP** (session or rolling VWAP from 1h OHLCV — **must be numeric each cycle**; if VWAP cannot be computed or read from TV, checklist §4 = **fail** → SKIP, do not guess).
 vol_state: contracting if current 15m ATR% < 0.8 × avg(ATR% last 50 bars); expanding if > 1.2 ×; else normal.
 bias: long-only if trend4h > 0 & trend1h > 0. short-only if both < 0. two-way if mixed.
 
-Setup selection uses regime:
-regimeenabled setupslong-only + normal/expandingA, B, D (long side)short-only + normal/expandingA, B, D (short side)two-way + contractingC onlyany + expanding after contractionC (breakout)
+Setup selection uses regime (every row needs a clear bucket — no improvisation):
+
+| regime | vol_state | enabled setups |
+|--------|-----------|-----------------|
+| long-only | normal or expanding | A, B, D — long only |
+| short-only | normal or expanding | A, B, D — short only |
+| two-way | contracting | **C only** |
+| two-way | normal or expanding | **A, B, D** on **either** side when session allows and checklist passes; direction must agree with **that** setup’s trigger (long vs short), HTF structure, and VWAP/EMA context. If no setup validates → SKIP. |
+| any | expanding after contraction | **C** (breakout) priority; else A/B/D if directional |
 
 6. Setup library
 Each setup defines: trigger, entry (always prefer post-only limit), stop, target, invalidation time, max attempts per 24h.
@@ -214,7 +221,7 @@ loop every 60s:
             break
         else:
             log_scan(sig, reason)
-The agent must emit at each cycle one of: {placed, skipped_<reason>, managing_<state>, killed_<rule>}. The journal is the user's only UI.
+The agent must emit at each cycle one of: {placed, skipped_<reason>, managing_<state>, killed_<rule>} in the **journal JSONL** (§11). For **cron stdout**, also follow §16 (human report + **SWING_JSON**).
 
 11. Journaling (write every event)
 Structure (JSON lines, one per event):
@@ -262,3 +269,38 @@ If any gate fails → do not enable live trading; re-tune the offending setup.
 15. One-line "North Star"
 
 "Trade the A-grade setup or trade nothing. At 25× leverage the edge lives inside 2 % price moves — protect every basis point of it from the tape, from the spread, and from Bybit's fee schedule."
+
+16. Cron output + SWING_JSON (must match previous swing agent — dashboard ingest)
+
+Repo cron calls `dashboard/ingest-run.mjs`, which **requires** a single machine-parsable line at the **very end** of the entire stdout (last non-empty line):
+
+`SWING_JSON ` + **one-line** JSON (no line breaks inside the JSON). After stripping the prefix, `JSON.parse` must succeed.
+
+**If this line is missing**, the run is stored with error **„brak linii SWING_JSON”** and decisions do not reach the SQLite dashboard.
+
+### Human-readable part (Polish, like the old swing cron reply)
+Use this order (markdown OK):
+1. Optional short header: `### Cron / PnL block` — one PL sentence explaining the prepended „Ostatnie zamknięcia PnL” lines (e.g. no fresh closes in ~30 min ⇒ only context, not a trade signal by itself).
+2. `### Cykl decyzyjny (TAOUSDT, <ISO date> <HH:MM> UTC)` — **Wynik:** one line (`SKIP` / zarządzanie / złożone zlecenie + setup).
+3. Checklist §4 as a compact table or bullets with **OK / FAIL** and numbers where applicable.
+4. Regime §5 + enabled setups row from the matrix above.
+5. Optional fenced `json` block for **human** journal preview (fine) — **still** end with `SWING_JSON …` on its own line.
+
+### SWING_JSON schema (schema_version = 1)
+Same contract as `prompts/swing-5-assets.txt`:
+
+- `schema_version`: **1** (number)
+- `summary`: **one sentence in Polish** (headline outcome)
+- `decisions`: **array with exactly one object** for this agent — always `symbol`: `"TAOUSDT"`.
+- `action` must be one of: **HOLD**, **OPEN_LONG**, **OPEN_SHORT**, **HOLD_LONG**, **HOLD_SHORT**, **SKIP** (same enum as swing dashboard).
+
+**Map TAO cycle → `action` (strict):**
+- **SKIP** — no new entry; checklist failed; no valid setup A–D; EV below gate; kill-switch blocks new entries; or flat with nothing to manage.
+- **OPEN_LONG** / **OPEN_SHORT** — you **placed** a new post-only entry order this cycle (not merely „would enter”).
+- **HOLD_LONG** / **HOLD_SHORT** — an open position exists in that direction; you are managing TP/SL/trail per §7.
+- **HOLD** — flat, no open TAO position, no orders to manage, no skip reason beyond „nothing to do” (rare).
+
+Each decision object should include **`summary`** (PL) and may include extra fields (`cycle_event`, `setup`, `regime`, `checklist`, `cli_log`, `errors`) — they are preserved in DB `detail_json`.
+
+**Example last line (structure only — replace with real values):**
+`SWING_JSON {"schema_version":1,"summary":"TAO: pominięto wejście — brak setupu A–D po checklistcie §4.","decisions":[{"symbol":"TAOUSDT","action":"SKIP","summary":"…","cycle_event":"skipped_no_setup","regime":{"trend4h":-1,"vol_state":"normal"}}]}`
